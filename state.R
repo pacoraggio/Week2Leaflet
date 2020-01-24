@@ -36,10 +36,6 @@ df.rawdata <- df.rawdata[!(df.rawdata$FATALITIES == 0 &
                                df.rawdata$INJURIES == 0),]
 
 
-df.capitals <- read.csv("./Data/state.csv")
-df.code <- read.csv("./Data/countrycode.csv")
-df.capitals$StateCode <- df.code$Country.Code
-
 # t1 <- t1[t1$STATE %in% df.capitals$StateCode,]
 df.rawdata <- df.rawdata[df.rawdata$STATE %in% df.capitals$StateCode,]
 
@@ -51,57 +47,61 @@ df.rawdata$YEAR <- year(as.Date(sub(" .*",
 head(df.rawdata)
 
 save(df.rawdata, file = "rawdata.RData")
+load("rawdata.RData")
+
+df.capitals <- read.csv("./Data/state.csv")
+df.code <- read.csv("./Data/countrycode.csv")
+df.capitals$STATE <- df.code$Country.Code
 
 data <- df.rawdata %>%
-    group_by(STATE, YEAR) %>%
-    summarise(sum_fatalities = sum(FATALITIES),
-              sum_injuries = sum(INJURIES),
-              total_casualties = sum_fatalities + sum_injuries)
+    group_by(STATE) %>%
+    summarise(mean_fatalities = mean(FATALITIES),
+              mean_injuries = mean(INJURIES),
+              total_casualties = mean_fatalities + mean_fatalities)
 
 head(data)
-data %>% group_by(Group) %>%
-    summarize(minAge = min(Age), minAgeName = Name[which.min(Age == min(Age))], 
-              maxAge = max(Age), maxAgeName = Name[which.max(Age == max(Age))])
+# data %>% group_by(Group) %>%
+#     summarize(minAge = min(Age), minAgeName = Name[which.min(Age == min(Age))], 
+#               maxAge = max(Age), maxAgeName = Name[which.max(Age == max(Age))])
 
 data %>% group_by(STATE) %>%
-    summarise(max_c = max(sum_fatalities),
-              maxYear = YEAR[which.max(sum_fatalities == max(sum_fatalities))])
+    summarise(max_c = max(mean_fatalities),
+              maxYear = YEAR[which.max(mean_fatalities == max(sum_fatalities))])
     
 datamaxfat <- data %>% group_by(STATE) %>%
     summarize(max_c = max(sum_fatalities), 
               maxYear = paste(YEAR[which(sum_fatalities == max(sum_fatalities))], collapse = ", "))
 
-
-################ 
-data %>%
-    group_by(STATE) %>%
-    summarise(max_fatalities = max(sum_fatalities), 
-              maxyear = data[which.max(data$sum_fatalities == max(data$sum_fatalities)),]$YEAR)
-
-
-
-
-data[which.max(data$sum_fatalities == max(data$sum_fatalities)),]$YEAR
-head(data)
-m_fatalities <- data %>%
-    group_by(STATE) %>%             
-    summarise(max_fatalities = max(sum_fatalities))
-
-
-data[data$STATE == "AK" & data$sum_fatalities == 18,]$YEAR
-
-max_fatalities
-
 leaflet()
+df.plotdata <- merge(df.capitals, data, by = "STATE")
+
 
 df.capitals %>%
     leaflet() %>%
     addTiles() %>%
     addCircleMarkers()
 
-t1$YEAR <- year(as.Date(sub(" .*", 
-                                  "", 
-                                  t1$BGN_DATE), 
-                              format("%m/%d/%Y")))
 
-t1 <- t1[!(t1$FATALITIES ==0 | t1$)]
+# https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Injury_icon_2.svg/1024px-Injury_icon_2.svg.png
+# https://stackoverflow.com/questions/43144596/r-and-leaflet-how-to-arrange-label-text-across-multiple-lines
+
+fatalitiesIcon <- makeIcon(
+    iconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Injury_icon_2.svg/1024px-Injury_icon_2.svg.png",
+    iconWidth = 11*215/230, iconHeight = 11,
+    iconAnchorX = 11*215/230/2, iconAnchorY = 6
+)
+
+
+df.plotdata %>%
+    leaflet() %>%
+    addTiles() %>%
+    addCircles(weight = 1.7, 
+               radius = df.plotdata$mean_fatalities *100000,
+               fillColor = "red",
+               color = "black",
+               fillOpacity = df.plotdata$mean_fatalities*0.75) %>%
+    addMarkers(icon = fatalitiesIcon, 
+               label = paste("mean fatalities: ", 
+                             round(df.plotdata$mean_fatalities, 2)))
+
+    
