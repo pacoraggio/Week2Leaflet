@@ -1,0 +1,101 @@
+---
+title: "Paolo Coraggio Week 2 Assignment"
+subtitle: "Coursera -- Developing Data Products"
+author: "Paolo Coraggio"
+date: "24/01/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+## Map of Fatalities due to Extreme Weather Conditions in US 
+
+The following map visualise the total fatalities due to extreme weather conditions for the different US states. The data are extracted from the [NOAA Storm Event Database](https://www.ncdc.noaa.gov/stormevents/details.jsp) from 1950 to 2011
+
+
+```{r map, fig.align='center', fig.width=9.0}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(leaflet)
+
+load('rawdata.RData')
+
+df.capitals <- read.csv("./Data/state.csv")
+df.code <- read.csv("./Data/countrycode.csv")
+df.capitals$STATE <- df.code$Country.Code
+
+data <- df.rawdata %>%
+    group_by(STATE, YEAR) %>%
+    summarise(sfatalities.py = sum(FATALITIES))
+
+data <- data %>%
+    group_by(STATE) %>%
+    summarise(sum.fatalities = sum(sfatalities.py),
+              mean.fatalities = round(mean(sfatalities.py),1),
+              median.fatalities = median(sfatalities.py),
+              sd.fatalities = round(sd(sfatalities.py),1),
+              max.fatalities = max(sfatalities.py),
+              year.max = paste(YEAR[which(sfatalities.py == max(sfatalities.py))], collapse = ", "))
+
+df.plotdata <- merge(df.capitals, data, by = "STATE")
+fatalitiesIcon <- makeIcon(
+    iconUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Injury_icon_2.svg/1024px-Injury_icon_2.svg.png",
+    iconWidth = 11*215/230, iconHeight = 11,
+    iconAnchorX = 11*215/230/2, iconAnchorY = 6
+)
+
+
+labels <- sprintf(
+    "<strong><center>%s</center></strong><br/>Total Fatalities: %g<br/>Mean: %g Standard Deviation: %g  per year<br/>Max Fatalities: %g in: %s",
+    df.plotdata$State,
+    df.plotdata$sum.fatalities,
+    df.plotdata$mean.fatalities, 
+    df.plotdata$sd.fatalities,
+    #df.plotdata$median.fatalities,
+    df.plotdata$max.fatalities,
+    df.plotdata$year.max
+) %>% lapply(htmltools::HTML)
+
+# median(df.plotdata$mean.fatalities)
+
+icon.fa <- makeAwesomeIcon(icon = 'flag', 
+                           markerColor = ifelse(df.plotdata$mean.fatalities < 4.6, 'green','red'), 
+                           library='fa',
+                           iconColor = 'white')
+
+
+lat1 <- min(df.capitals$Latitude) 
+lat2 <- max(df.capitals$Latitude)
+lon1 <- min(df.capitals$Longitude)
+lon2 <- max(df.capitals$Longitude)
+
+df.plotdata %>%
+    leaflet(options = leafletOptions(minZoom = 2.8)) %>%
+    addTiles() %>%
+    addCircles(weight = 1.7, 
+               radius = df.plotdata$sum.fatalities * 300,
+               fillColor = "red",
+               color = "black",
+               fillOpacity = df.plotdata$mean.fatalities*0.04) %>%
+    addAwesomeMarkers(icon = icon.fa, 
+                      label = labels) %>%
+    addLegend(labels = c("mean fatalities < 4.6 per year",
+                         "mean fatalities > 4.6 per year"),
+              colors = c("green", "red")) %>%
+    setView(lng = lon1 -20,
+            lat = lat1 -10,
+            zoom = 2.8) %>%
+    setMaxBounds( lng1 = lon1 - 10
+                  , lat1 = lat1 - 5
+                  , lng2 = lon2 + 10
+                  , lat2 = lat2 + 10)
+
+```
+
+Full code available at the following GitHub repository:
+
+- [https://github.com/pacoraggio/Week2Leaflet](https://github.com/pacoraggio/Week2Leaflet)
+
