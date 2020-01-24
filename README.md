@@ -8,4 +8,4 @@ The Assignment is to
 
 > Create a web page using R Markdown that features a map created with Leaflet.
 
-The idea is to use the Storm dataset from Reproducible Research course. From that dataset it will be extracted, for each US state, the most destructive event in terms of casualties and displayed on the map. 
+The idea is to use the Storm dataset from Reproducible Research course and, from that dataset to show for each state the total fatalities and annual mean and standard deviation and the maximun fatalities registrered in a Year. 
